@@ -103,6 +103,10 @@ public:
 
     virtual bool contains(const osmium::Location& location) const noexcept = 0;
 
+    virtual bool has_conflicting_tags(const osmium::TagList& tags) const noexcept = 0;
+
+    virtual bool has_matching_tags(const osmium::TagList& tags) const noexcept = 0;
+
     virtual const char* geometry_type() const noexcept = 0;
 
     virtual std::string geometry_as_text() const = 0;

@@ -322,10 +322,38 @@ Strategy **complete_ways**
     parent relations. The ways are reference-complete, but the relations are
     not.
 
+Strategy **complete_ways_by_first_node_and_tags**
+:   Runs in two passes. The extract will contain all nodes inside the region
+    and all ways **starting at** those nodes as well as all nodes referenced by
+    those ways. If include_tags and/or exclude_tags are defined, extract will
+    also contain all ways fulfilling all of the include_tags rules and all
+    nodes referenced by those ways, and it will **not** contain ways fulfilling
+    any of the exclude_tags. The extract will also contain all relations referenced by
+    nodes inside the region or ways already included and, recursively, their
+    parent relations. The ways are reference-complete, but the relations are
+    not.
+
 Strategy **smart**
 :   Runs in three passes. The extract will contain all nodes inside the region
     and all ways referencing those nodes as well as all nodes referenced by
     those ways. The extract will also contain all relations referenced by
+    nodes inside the region or ways already included and, recursively, their
+    parent relations. The extract will also contain all nodes and ways (and
+    the nodes they reference) referenced by relations tagged
+    "type=multipolygon" directly referencing any nodes in the region or ways
+    referencing nodes in the region. The ways are reference-complete, and
+    all multipolygon relations referencing nodes in the regions or ways that
+    have nodes in the region are reference-complete. Other relations are not
+    reference-complete.
+
+Strategy **smart_by_first_node_and_tags**
+:   Runs in three passes. The extract will contain all nodes inside the region
+    and all ways **starting at** those nodes as well as all nodes referenced by
+    those ways. If include_tags and/or exclude_tags are defined, extract will
+    also contain all ways fulfilling all the include_tags rules and all 
+    nodes referenced by those ways, and it will **not** contain ways fulfilling
+    any of the exclude_tags.
+    The extract will also contain all relations referenced by
     nodes inside the region or ways already included and, recursively, their
     parent relations. The extract will also contain all nodes and ways (and
     the nodes they reference) referenced by relations tagged
@@ -352,6 +380,32 @@ this allows completing almost complete relations. It can be useful for instance
 to make sure a boundary relation is complete even if some of it is outside the
 polygon used for extraction.
 
+The **complete_ways_by_first_node_and_tags** and **smart_by_first_node_and_tags**
+strategies allow to define include_tags and exclude_tags.
+They are onl supported when using **config file**, and they should be defined on
+extract level, e.g.:
+
+    "extracts": [
+        {
+            "output": "hamburg.osm.pbf",
+            "output_format": "pbf",
+            "description": "optional description",
+            "bbox": ...,
+            "include_tags": [
+              "key1=value1"
+            ],
+            "exclude_tags": [
+              "key1!=key1",
+              "key2"
+            ]
+        },
+        ...
+    ]
+
+Note that filters defined within include_tags and exclude_tags support following forms:
+- `key` - fulfilled when there is a tag with given key
+- `key=value` - fulfilled when there is a tag with given key and given value
+- `key!=value` - fulfilled when there is a tag with given key, and it has value different from given value
 
 # DIAGNOSTICS
 

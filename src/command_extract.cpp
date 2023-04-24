@@ -30,9 +30,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "extract/osm_file_parser.hpp"
 #include "extract/poly_file_parser.hpp"
 #include "extract/strategy_complete_ways.hpp"
+#include "extract/strategy_complete_ways_by_first_node_and_tags.hpp"
 #include "extract/strategy_complete_ways_with_history.hpp"
 #include "extract/strategy_simple.hpp"
 #include "extract/strategy_smart.hpp"
+#include "extract/strategy_smart_by_first_node_and_tags.hpp"
 #include "util.hpp"
 
 #include <osmium/geom/coordinates.hpp>
@@ -276,6 +278,26 @@ std::size_t parse_multipolygon(const std::string& directory, const rapidjson::Va
     throw config_error{"Multipolygon must be an object or array."};
 }
 
+std::vector<osmium::TagsFilter> parse_tags_filters(const rapidjson::Value& object, const char* key) {
+    std::vector<osmium::TagsFilter> filters;
+    const auto filter_tags = object.FindMember(key);
+    if (filter_tags != object.MemberEnd() && filter_tags->value.IsArray()) {
+        filters.reserve(filter_tags->value.Size());
+        for (const auto& value : filter_tags->value.GetArray()) {
+            if (!value.IsString()) {
+                throw config_error{std::string{"Array elements in '"} + key + "' must be strings."};
+            }
+            if (value.GetString()[0] != '\0') {
+                osmium::TagsFilter single_tag_filter{false};
+                single_tag_filter.add_rule(true, get_tag_matcher(value.GetString()));
+                filters.emplace_back(single_tag_filter);
+                std::cout << "Added rule: " << value.GetString() << " to filter = " << key << "\n";
+            }
+        }
+    }
+    return filters;
+}
+
 static bool is_existing_directory(const char* name) {
 #ifdef _MSC_VER
     // Windows implementation
@@ -356,6 +378,9 @@ void CommandExtract::parse_config_file() {
             const std::string output_format{get_value_as_string(item, "output_format")};
             const std::string description{get_value_as_string(item, "description")};
 
+            const std::vector<osmium::TagsFilter> include_tags_filters = parse_tags_filters(item, "include_tags");
+            const std::vector<osmium::TagsFilter> exclude_tags_filters = parse_tags_filters(item, "exclude_tags");
+
             const auto json_bbox         = item.FindMember("bbox");
             const auto json_polygon      = item.FindMember("polygon");
             const auto json_multipolygon = item.FindMember("multipolygon");
@@ -370,9 +395,9 @@ void CommandExtract::parse_config_file() {
             if (json_bbox != item.MemberEnd()) {
                 m_extracts.push_back(std::make_unique<ExtractBBox>(output_file, description, parse_bbox(json_bbox->value)));
             } else if (json_polygon != item.MemberEnd()) {
-                m_extracts.push_back(std::make_unique<ExtractPolygon>(output_file, description, m_buffer, parse_polygon(m_config_directory, json_polygon->value, &m_buffer)));
+                m_extracts.push_back(std::make_unique<ExtractPolygon>(output_file, description, m_buffer, parse_polygon(m_config_directory, json_polygon->value, &m_buffer), include_tags_filters, exclude_tags_filters));
             } else if (json_multipolygon != item.MemberEnd()) {
-                m_extracts.push_back(std::make_unique<ExtractPolygon>(output_file, description, m_buffer, parse_multipolygon(m_config_directory, json_multipolygon->value, &m_buffer)));
+                m_extracts.push_back(std::make_unique<ExtractPolygon>(output_file, description, m_buffer, parse_multipolygon(m_config_directory, json_multipolygon->value, &m_buffer), include_tags_filters, exclude_tags_filters));
             } else {
                 throw config_error{"Missing geometry for extract. Need 'bbox', 'polygon', or 'multipolygon'."};
             }
@@ -444,6 +469,20 @@ std::unique_ptr<ExtractStrategy> CommandExtract::make_strategy(const std::string
             throw argument_error{"The 'smart' strategy is not supported for history files."};
         }
         return std::make_unique<strategy_smart::Strategy>(m_extracts, m_options);
+    }
+
+    if (name == "smart_by_first_node_and_tags") {
+        if (m_with_history) {
+            throw argument_error{"The 'smart_by_first_node_and_tags' strategy is not supported for history files."};
+        }
+        return std::make_unique<strategy_smart_by_first_node_and_tags::Strategy>(m_extracts, m_options);
+    }
+
+    if (name == "complete_ways_by_first_node_and_tags") {
+        if (m_with_history) {
+            throw argument_error{"The 'complete_ways_by_first_node_and_tags' strategy is not supported for history files."};
+        }
+        return std::make_unique<strategy_complete_ways_by_first_node_and_tags::Strategy>(m_extracts, m_options);
     }
 
     throw argument_error{std::string{"Unknown extract strategy: '"} + name + "'."};
@@ -539,7 +578,8 @@ bool CommandExtract::setup(const std::vector<std::string>& arguments) {
         if (m_with_history) {
             m_output_file.set_has_multiple_object_versions(true);
         }
-        m_extracts.push_back(std::make_unique<ExtractPolygon>(m_output_file, "", m_buffer, parse_multipolygon_object("./", vm["polygon"].as<std::string>(), "", &m_buffer)));
+        std::vector<osmium::TagsFilter> empty_filters;
+        m_extracts.push_back(std::make_unique<ExtractPolygon>(m_output_file, "", m_buffer, parse_multipolygon_object("./", vm["polygon"].as<std::string>(), "", &m_buffer), empty_filters, empty_filters));
     }
 
     if (vm.count("option")) {

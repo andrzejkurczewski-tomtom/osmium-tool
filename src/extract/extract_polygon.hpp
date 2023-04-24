@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <osmium/osm/area.hpp>
 #include <osmium/osm/segment.hpp>
+#include <osmium/tags/tags_filter.hpp>
 
 #include <vector>
 
@@ -37,6 +38,9 @@ class ExtractPolygon : public Extract {
 
     std::vector<std::vector<osmium::Segment>> m_bands;
     int32_t m_dy = 0;
+
+    const std::vector<osmium::TagsFilter> m_include_tags_filters;
+    const std::vector<osmium::TagsFilter> m_exclude_tags_filters;
 
     const osmium::Area& area() const noexcept;
 
@@ -50,9 +54,13 @@ class ExtractPolygon : public Extract {
 
 public:
 
-    ExtractPolygon(const osmium::io::File& output_file, const std::string& description, const osmium::memory::Buffer& buffer, std::size_t offset);
+    ExtractPolygon(const osmium::io::File& output_file, const std::string& description, const osmium::memory::Buffer& buffer, std::size_t offset, const std::vector<osmium::TagsFilter>& include_tags_filters, const std::vector<osmium::TagsFilter>& exclude_tags_filters);
 
     bool contains(const osmium::Location& location) const noexcept override final;
+
+    bool has_conflicting_tags(const osmium::TagList& tags) const noexcept override final;
+
+    bool has_matching_tags(const osmium::TagList& tags) const noexcept override final;
 
     const char* geometry_type() const noexcept override final;
 

@@ -57,6 +57,14 @@ public:
         return m_extract_ptr->contains(location);
     }
 
+    bool has_matching_tags(const osmium::TagList& tags) const noexcept {
+        return m_extract_ptr->has_matching_tags(tags);
+    }
+
+    bool has_conflicting_tags(const osmium::TagList& tags) const noexcept {
+        return m_extract_ptr->has_conflicting_tags(tags);
+    }
+
     void write(const osmium::memory::Item& item) {
         m_extract_ptr->write(item);
     }

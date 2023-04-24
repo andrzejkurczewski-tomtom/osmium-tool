@@ -35,6 +35,10 @@ public:
 
     bool contains(const osmium::Location& location) const noexcept override final;
 
+    bool has_conflicting_tags(const osmium::TagList& tags) const noexcept override final;
+
+    bool has_matching_tags(const osmium::TagList& tags) const noexcept override final;
+
     const char* geometry_type() const noexcept override final;
 
     std::string geometry_as_text() const override final;

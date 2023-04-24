@@ -30,6 +30,14 @@ bool ExtractBBox::contains(const osmium::Location& location) const noexcept {
     return location.valid() && envelope().contains(location);
 }
 
+bool ExtractBBox::has_conflicting_tags(const osmium::TagList& tags) const noexcept {
+    return false;
+}
+
+bool ExtractBBox::has_matching_tags(const osmium::TagList& tags) const noexcept {
+    return false;
+}
+
 const char* ExtractBBox::geometry_type() const noexcept {
     return "bbox";
 }
