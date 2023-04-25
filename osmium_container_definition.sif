@@ -1,0 +1,23 @@
+Bootstrap: library
+From: ubuntu:latest
+Stage: build
+
+%files
+. /work/osmium-tool
+
+%environment
+    PATH=$PATH:/work/osmium-tool-build
+
+%post
+apt-get update
+yes | apt-get install build-essential git libboost-program-options-dev libbz2-dev zlib1g-dev liblz4-dev libexpat1-dev cmake
+
+cd /work
+git clone --depth 1 --branch v1.6.3 https://github.com/mapbox/protozero
+git clone --depth 1 --branch v2.17.0 https://github.com/osmcode/libosmium
+
+mkdir osmium-tool-build
+cd osmium-tool-build
+cmake ../osmium-tool
+make
+rm -rf ../osmium-tool

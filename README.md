@@ -119,6 +119,13 @@ The necessary dependencies can be installed with [conda](https://conda.io).
 See `appveyor.yml` for the necessary commands to compile osmium-tool.
 
 
+## Singularity
+
+Singularity image can be built as follows:
+
+    sudo singularity build osmium.img osmium_container_definition.sif
+
+
 ## Documentation
 
 See the [Osmium Tool website](https://osmcode.org/osmium-tool/)
