@@ -14,7 +14,12 @@ yes | apt-get install build-essential git libboost-program-options-dev libbz2-de
 
 cd /work
 git clone --depth 1 --branch v1.6.3 https://github.com/mapbox/protozero
-git clone --depth 1 --branch v2.17.0 https://github.com/osmcode/libosmium
+git clone --depth 1 https://github.com/alexeisolodovnicov-tomtom/libosmium
+
+# Check-out the libosmium patch to allow tag values longer than the 256 character limit
+cd libosmium
+git checkout 630fadee52edfb77cbef696ed8643a4f0b89de3a
+cd ..
 
 mkdir osmium-tool-build
 cd osmium-tool-build
