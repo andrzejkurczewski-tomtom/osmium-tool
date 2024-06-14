@@ -203,7 +203,7 @@ namespace strategy_smart_by_first_node_and_tags {
                         if (e->node_ids.get(member.positive_ref())) {
                             if (wanted_members == 0) {
                                 e->relation_ids.set(relation.positive_id());
-                                if (strategy().check_type(relation) && strategy().check_tags(relation)) {
+                                if (strategy().check_type(relation) || strategy().check_tags(relation)) {
                                     e->add_relation_members(relation);
                                     return;
                                 }
@@ -215,7 +215,7 @@ namespace strategy_smart_by_first_node_and_tags {
                         if (e->way_ids.get(member.positive_ref())) {
                             if (wanted_members == 0) {
                                 e->relation_ids.set(relation.positive_id());
-                                if (strategy().check_type(relation) && strategy().check_tags(relation)) {
+                                if (strategy().check_type(relation) || strategy().check_tags(relation)) {
                                     e->add_relation_members(relation);
                                     return;
                                 }

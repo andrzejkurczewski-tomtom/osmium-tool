@@ -61,7 +61,7 @@ namespace strategy_smart_by_first_node_and_tags {
         std::size_t m_complete_partial_relations_percentage = 100;
 
         std::vector<std::string> m_filter_tags;
-        osmium::TagsFilter m_filter{true};
+        osmium::TagsFilter m_filter{false};
 
         bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
         bool check_type(const osmium::Relation& relation) const noexcept;
