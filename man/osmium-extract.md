@@ -392,6 +392,16 @@ You can combine the "-S types", "-S complete-partial-relations", and "-S tags"
 options. The options will be interpreted as "(types OR
 complete-partial-relations) AND tags".
 
+For the **smart_by_first_node_and_tags** strategy  you can set the option
+"-S tags=PATTERN,...", however, it works differently compare to **smart** 
+strategy. In this strategy, the combination of "types" and "tags" options
+includes result of both matches, for example, of the matched relation has
+a type=multipolygon and a tag maritime=yes, and the query contains options
+like: "-S types=road_acess -S tags=maritime=yes" then normally the relation
+won't be processed, as it's type differs from declared options, but with 
+smart_by_first_node_and_tags the relation will be processed.
+ 
+
 The **complete_ways_by_first_node_and_tags** and **smart_by_first_node_and_tags**
 strategies allow to define include_tags and exclude_tags.
 They are onl supported when using **config file**, and they should be defined on
