@@ -30,11 +30,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "extract/osm_file_parser.hpp"
 #include "extract/poly_file_parser.hpp"
 #include "extract/strategy_complete_ways.hpp"
-#include "extract/strategy_complete_ways_by_first_node_and_tags.hpp"
 #include "extract/strategy_complete_ways_with_history.hpp"
 #include "extract/strategy_simple.hpp"
 #include "extract/strategy_smart.hpp"
-#include "extract/strategy_smart_by_first_node_and_tags.hpp"
+#include "extract/strategy_smart_custom.hpp"
 #include "util.hpp"
 
 #include <osmium/geom/coordinates.hpp>
@@ -471,18 +470,11 @@ std::unique_ptr<ExtractStrategy> CommandExtract::make_strategy(const std::string
         return std::make_unique<strategy_smart::Strategy>(m_extracts, m_options);
     }
 
-    if (name == "smart_by_first_node_and_tags") {
+    if (name == "smart_custom") {
         if (m_with_history) {
-            throw argument_error{"The 'smart_by_first_node_and_tags' strategy is not supported for history files."};
+            throw argument_error{"The 'smart_custom' strategy is not supported for history files."};
         }
-        return std::make_unique<strategy_smart_by_first_node_and_tags::Strategy>(m_extracts, m_options);
-    }
-
-    if (name == "complete_ways_by_first_node_and_tags") {
-        if (m_with_history) {
-            throw argument_error{"The 'complete_ways_by_first_node_and_tags' strategy is not supported for history files."};
-        }
-        return std::make_unique<strategy_complete_ways_by_first_node_and_tags::Strategy>(m_extracts, m_options);
+        return std::make_unique<strategy_smart_custom::Strategy>(m_extracts, m_options);
     }
 
     throw argument_error{std::string{"Unknown extract strategy: '"} + name + "'."};

@@ -1,5 +1,5 @@
-#ifndef EXTRACT_STRATEGY_SMART_BY_FIRST_NODE_AND_TAGS_HPP
-#define EXTRACT_STRATEGY_SMART_BY_FIRST_NODE_AND_TAGS_HPP
+#ifndef EXTRACT_strategy_smart_custom_HPP
+#define EXTRACT_strategy_smart_custom_HPP
 
 /*
 
@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
-namespace strategy_smart_by_first_node_and_tags {
+namespace strategy_smart_custom {
 
     struct Data {
         osmium::index::IdSetDense<osmium::unsigned_object_id_type> node_ids;
@@ -44,7 +44,7 @@ namespace strategy_smart_by_first_node_and_tags {
         osmium::index::IdSetDense<osmium::unsigned_object_id_type> extra_relation_ids;
 
         void add_relation_members(const osmium::Relation& relation);
-        void add_relation_parents(osmium::unsigned_object_id_type id, const osmium::index::RelationsMapIndex& map);
+        void add_relation_network(const osmium::index::RelationsMapIndexes& indices);
     };
 
     class Strategy : public ExtractStrategy {
@@ -58,14 +58,10 @@ namespace strategy_smart_by_first_node_and_tags {
 
         std::vector<std::string> m_types;
 
-        std::size_t m_complete_partial_relations_percentage = 100;
-
         std::vector<std::string> m_filter_tags;
         osmium::TagsFilter m_filter{false};
 
-        bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
-        bool check_type(const osmium::Relation& relation) const noexcept;
-        bool check_tags(const osmium::Relation& relation) const noexcept;
+        bool m_by_first_node = false;
 
     public:
 
@@ -77,8 +73,12 @@ namespace strategy_smart_by_first_node_and_tags {
 
         void run(osmium::VerboseOutput& vout, bool display_progress, const osmium::io::File& input_file) override final;
 
+        bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
+        bool check_type(const osmium::Relation& relation) const noexcept;
+        bool check_tags(const osmium::Relation& relation) const noexcept;
+
     }; // class Strategy
 
-} // namespace strategy_smart_by_first_node_and_tags
+} // namespace strategy_smart_custom
 
-#endif // EXTRACT_STRATEGY_SMART_BY_FIRST_NODE_AND_TAGS_HPP
+#endif // EXTRACT_strategy_smart_custom_HPP

@@ -262,11 +262,10 @@ set(OSMIUM_SOURCE_FILES
     extract/osm_file_parser.cpp
     extract/poly_file_parser.cpp
     extract/strategy_complete_ways.cpp
-    extract/strategy_complete_ways_by_first_node_and_tags.cpp
     extract/strategy_complete_ways_with_history.cpp
     extract/strategy_simple.cpp
     extract/strategy_smart.cpp
-    extract/strategy_smart_by_first_node_and_tags.cpp
+    extract/strategy_smart_custom.cpp
 )
 
 foreach(_command ${OSMIUM_COMMANDS})

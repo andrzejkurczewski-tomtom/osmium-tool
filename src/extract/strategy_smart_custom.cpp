@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
-#include "strategy_smart_by_first_node_and_tags.hpp"
+#include "strategy_smart_custom.hpp"
 
 #include "../util.hpp"
 
@@ -29,17 +29,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <osmium/util/misc.hpp>
 #include <osmium/util/string.hpp>
 
-namespace strategy_smart_by_first_node_and_tags {
+namespace strategy_smart_custom {
 
     void Data::add_relation_members(const osmium::Relation& relation) {
         for (const auto& member : relation.members()) {
             const auto ref = member.positive_ref();
             switch (member.type()) {
                 case osmium::item_type::node:
-                    extra_node_ids.set(ref);
+                    if (!node_ids.get(ref)) {
+                        extra_node_ids.set(ref);
+                    }
                     break;
                 case osmium::item_type::way:
-                    extra_way_ids.set(ref);
+                    if (!way_ids.get(ref)) {
+                        extra_way_ids.set(ref);
+                    }
                     break;
                 default:
                     break;
@@ -47,14 +51,26 @@ namespace strategy_smart_by_first_node_and_tags {
         }
     }
 
-    void Data::add_relation_parents(osmium::unsigned_object_id_type id, const osmium::index::RelationsMapIndex& map) {
-        map.for_each(id, [&](osmium::unsigned_object_id_type parent_id) {
-            if (!relation_ids.get(parent_id) &&
-                !extra_relation_ids.get(parent_id)) {
-                relation_ids.set(parent_id);
-                add_relation_parents(parent_id, map);
+    void Data::add_relation_network(const osmium::index::RelationsMapIndexes& indices) {
+        std::queue<osmium::unsigned_object_id_type> q;
+        const auto queue_relation = [&q](const auto id) {
+            q.push(id);
+        };
+        const auto queue_relations = [&](const auto id) {
+            indices.member_to_parent().for_each_parent(id, queue_relation);
+            indices.parent_to_member().for_each_parent(id, queue_relation);
+        };
+        for (const auto id : relation_ids) {
+            queue_relations(id);
+        }
+        while (!q.empty()) {
+            const auto id = q.front();
+            q.pop();
+            if (!relation_ids.get(id) && !extra_relation_ids.get(id)) {
+                extra_relation_ids.set(id);
+                queue_relations(id);
             }
-        });
+        }
     }
 
     Strategy::Strategy(const std::vector<std::unique_ptr<Extract>>& extracts, const osmium::Options& options) {
@@ -63,21 +79,12 @@ namespace strategy_smart_by_first_node_and_tags {
             m_extracts.emplace_back(*extract);
         }
 
-        m_types = {"multipolygon"};
         for (const auto& option : options) {
             if (option.first == "types") {
-                if (option.second.empty() || option.second == "any" || option.second == "true") {
+                if (option.second.empty()) {
                     m_types.clear();
                 } else {
                     m_types = osmium::split_string(option.second, ',', true);
-                }
-            } else if (option.first == "complete-partial-relations") {
-                if (!option.second.empty()) {
-                    m_complete_partial_relations_percentage = osmium::detail::str_to_int<std::size_t>(option.second.c_str());
-                    if (m_complete_partial_relations_percentage <= 0 ||
-                        m_complete_partial_relations_percentage > 100) {
-                        m_complete_partial_relations_percentage = 100;
-                    }
                 }
             } else if (option.first == "tags") {
                 m_filter_tags = osmium::split_string(option.second, ',', true);
@@ -92,23 +99,21 @@ namespace strategy_smart_by_first_node_and_tags {
                         m_filter.add_rule(true, osmium::TagMatcher{key, value});
                     }
                 }
+            } else if (option.first == "by-first-node") {
+                m_by_first_node = option.second.empty() || option.second == "true" || option.second == "yes";
             } else {
-                warning(std::string{"Ignoring unknown option '"} + option.first + "' for 'smart_by_first_node_and_tags' strategy.\n");
+                warning(std::string{"Ignoring unknown option '"} + option.first + "' for 'smart_custom' strategy.\n");
             }
         }
     }
 
     const char* Strategy::name() const noexcept {
-        return "smart_by_first_node_and_tags";
-    }
-
-    bool Strategy::check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept {
-        return wanted_members * 100 >= size * m_complete_partial_relations_percentage;
+        return "smart_custom";
     }
 
     bool Strategy::check_type(const osmium::Relation& relation) const noexcept {
         if (m_types.empty()) {
-            return true;
+            return false;
         }
 
         const char* type = relation.tags()["type"];
@@ -125,9 +130,7 @@ namespace strategy_smart_by_first_node_and_tags {
 
     void Strategy::show_arguments(osmium::VerboseOutput& vout) {
         vout << "Additional strategy options:\n";
-        if (m_types.empty()) {
-            vout << "  - [types] relation types: any\n";
-        } else {
+        if (!m_types.empty()) {
             std::string typelist;
             for (const auto& type : m_types) {
                 if (!typelist.empty()) {
@@ -137,14 +140,7 @@ namespace strategy_smart_by_first_node_and_tags {
             }
             vout << "  - [types] relation types: " << typelist << '\n';
         }
-        if (m_complete_partial_relations_percentage == 100) {
-            vout << "  - [complete-partial-relations] do not complete partial relations\n";
-        } else {
-            vout << "  - [complete-partial-relations] complete partial relations when " << m_complete_partial_relations_percentage << "% or more members are in extract\n";
-        }
-        if (m_filter_tags.empty()) {
-            vout << "  - [tags] no tags defined\n";
-        } else {
+        if (!m_filter_tags.empty()) {
             std::string filterlist;
             for (const auto& tag : m_filter_tags) {
                 if (!filterlist.empty()) {
@@ -153,6 +149,9 @@ namespace strategy_smart_by_first_node_and_tags {
                 filterlist += tag;
             }
             vout << "  - [tags] " << filterlist << '\n';
+        }
+        if (m_by_first_node) {
+            vout << "  - [by-first-node]\n";
         }
         vout << '\n';
     }
@@ -183,10 +182,28 @@ namespace strategy_smart_by_first_node_and_tags {
         }
 
         void eway(extract_data* e, const osmium::Way& way) {
-            const auto& first_node = way.nodes().front();
-            if ((e->node_ids.get(first_node.positive_ref()) && !e->has_conflicting_tags(way.tags())) || e->has_matching_tags(way.tags())) {
-                e->way_ids.set(way.positive_id());
-                return;
+            if (strategy().m_by_first_node) {
+                const auto& first_node = way.nodes().front();
+                if ((e->node_ids.get(first_node.positive_ref()) && !e->has_conflicting_tags(way.tags())) || e->has_matching_tags(way.tags())) {
+                    e->way_ids.set(way.positive_id());
+                    for (const auto& nr : way.nodes()) {
+                        if (!e->node_ids.get(nr.positive_ref())) {
+                            e->extra_node_ids.set(nr.positive_ref());
+                        }
+                    }
+                }
+            } else {
+                for (const auto& nr : way.nodes()) {
+                    if (e->node_ids.get(nr.positive_ref())) {
+                        e->way_ids.set(way.positive_id());
+                        for (const auto& nr : way.nodes()) {
+                            if (!e->node_ids.get(nr.positive_ref())) {
+                                e->extra_node_ids.set(nr.positive_ref());
+                            }
+                        }
+                        return;
+                    }
+                }
             }
         }
 
@@ -196,40 +213,29 @@ namespace strategy_smart_by_first_node_and_tags {
         }
 
         void erelation(extract_data* e, const osmium::Relation& relation) {
-            std::size_t wanted_members = 0;
             for (const auto& member : relation.members()) {
                 switch (member.type()) {
                     case osmium::item_type::node:
                         if (e->node_ids.get(member.positive_ref())) {
-                            if (wanted_members == 0) {
-                                e->relation_ids.set(relation.positive_id());
-                                if (strategy().check_type(relation) || strategy().check_tags(relation)) {
-                                    e->add_relation_members(relation);
-                                    return;
-                                }
+                            e->relation_ids.set(relation.positive_id());
+                            if (strategy().check_type(relation) || strategy().check_tags(relation)) {
+                                e->add_relation_members(relation);
+                                return;
                             }
-                            ++wanted_members;
                         }
                         break;
                     case osmium::item_type::way:
                         if (e->way_ids.get(member.positive_ref())) {
-                            if (wanted_members == 0) {
-                                e->relation_ids.set(relation.positive_id());
-                                if (strategy().check_type(relation) || strategy().check_tags(relation)) {
-                                    e->add_relation_members(relation);
-                                    return;
-                                }
+                            e->relation_ids.set(relation.positive_id());
+                            if (strategy().check_type(relation) || strategy().check_tags(relation)) {
+                                e->add_relation_members(relation);
+                                return;
                             }
-                            ++wanted_members;
                         }
                         break;
                     default:
                         break;
                 }
-            }
-
-            if (strategy().check_members_count(relation.members().size(), wanted_members) && strategy().check_tags(relation)) {
-                e->add_relation_members(relation);
             }
         }
 
@@ -247,12 +253,10 @@ namespace strategy_smart_by_first_node_and_tags {
             Pass(strategy) {
         }
 
-        void eway(extract_data* e, const osmium::Way& way) {
-            if (e->way_ids.get(way.positive_id()) ||
-                e->extra_way_ids.get(way.positive_id())) {
-                for (const auto& nr : way.nodes()) {
-                    e->extra_node_ids.set(nr.ref());
-                }
+        void erelation(extract_data* e, const osmium::Relation& relation) {
+            if (e->extra_relation_ids.get(relation.positive_id()) &&
+                (strategy().check_type(relation) || strategy().check_tags(relation))) {
+                e->add_relation_members(relation);
             }
         }
 
@@ -263,6 +267,26 @@ namespace strategy_smart_by_first_node_and_tags {
     public:
 
         explicit Pass3(Strategy* strategy) :
+            Pass(strategy) {
+        }
+
+        void eway(extract_data* e, const osmium::Way& way) {
+            if (e->extra_way_ids.get(way.positive_id())) {
+                for (const auto& nr : way.nodes()) {
+                    if (!e->node_ids.get(nr.positive_ref())) {
+                        e->extra_node_ids.set(nr.positive_ref());
+                    }
+                }
+            }
+        }
+
+    }; // class Pass3
+
+    class Pass4 : public Pass<Strategy, Pass4> {
+
+    public:
+
+        explicit Pass4(Strategy* strategy) :
             Pass(strategy) {
         }
 
@@ -287,43 +311,54 @@ namespace strategy_smart_by_first_node_and_tags {
             }
         }
 
-    }; // class Pass3
+    }; // class Pass4
 
     void Strategy::run(osmium::VerboseOutput& vout, bool display_progress, const osmium::io::File& input_file) {
         if (input_file.filename().empty()) {
-            throw osmium::io_error{"Can not read from STDIN when using 'smart_by_first_node_and_tags' strategy."};
+            throw osmium::io_error{"Can not read from STDIN when using 'smart_custom' strategy."};
         }
 
-        vout << "Running 'smart_by_first_node_and_tags' strategy in three passes...\n";
+        vout << "Running 'smart_custom' strategy in (at most) four passes...\n";
         const std::size_t file_size = osmium::file_size(input_file.filename());
-        osmium::ProgressBar progress_bar{file_size * 3, display_progress};
+        osmium::ProgressBar progress_bar{file_size * 4, display_progress};
 
-        vout << "First pass (of three)...\n";
+        vout << "First pass (of four)...\n";
         Pass1 pass1{this};
         pass1.run(progress_bar, input_file, osmium::io::read_meta::no);
         progress_bar.file_done(file_size);
+        vout << "Pass 1 done\n";
 
-        // recursively get parents of all relations that are in an extract
-        const auto relations_map = pass1.relations_map_stash().build_member_to_parent_index();
+        // identify the relations to include
+        const auto relation_indices = pass1.relations_map_stash().build_indexes();
         for (auto& e : m_extracts) {
-            for (const osmium::unsigned_object_id_type id : e.relation_ids) {
-                e.add_relation_parents(id, relations_map);
-            }
+            e.add_relation_network(relation_indices);
         }
 
         progress_bar.remove();
-        vout << "Second pass (of three)...\n";
+        vout << "Second pass (of four)...\n";
         Pass2 pass2{this};
-        pass2.run(progress_bar, input_file, osmium::osm_entity_bits::way, osmium::io::read_meta::no);
+        if (std::find_if(m_extracts.begin(), m_extracts.end(),
+            [](const auto& extract) { return !extract.extra_relation_ids.empty(); }) != m_extracts.end()) {
+            pass2.run(progress_bar, input_file, osmium::osm_entity_bits::relation, osmium::io::read_meta::no);
+        }
         progress_bar.file_done(file_size);
 
         progress_bar.remove();
-        vout << "Third pass (of three)...\n";
+        vout << "Third pass (of four)...\n";
         Pass3 pass3{this};
-        pass3.run(progress_bar, input_file);
+        if (std::find_if(m_extracts.begin(), m_extracts.end(),
+            [](const auto& extract) { return !extract.extra_way_ids.empty(); }) != m_extracts.end()) {
+            pass3.run(progress_bar, input_file, osmium::osm_entity_bits::way, osmium::io::read_meta::no);
+        }
+        progress_bar.file_done(file_size);
+
+        progress_bar.remove();
+        vout << "Fourth pass (of four)...\n";
+        Pass4 pass4{this};
+        pass4.run(progress_bar, input_file);
 
         progress_bar.done();
     }
 
-} // namespace strategy_smart_by_first_node_and_tags
+} // namespace strategy_smart_custom
 
