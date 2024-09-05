@@ -44,7 +44,7 @@ namespace strategy_smart_by_first_node_and_tags {
         osmium::index::IdSetDense<osmium::unsigned_object_id_type> extra_relation_ids;
 
         void add_relation_members(const osmium::Relation& relation);
-        void add_relation_parents(osmium::unsigned_object_id_type id, const osmium::index::RelationsMapIndex& map);
+        void add_relation_network(const osmium::index::RelationsMapIndexes& indices);
     };
 
     class Strategy : public ExtractStrategy {
@@ -61,11 +61,7 @@ namespace strategy_smart_by_first_node_and_tags {
         std::size_t m_complete_partial_relations_percentage = 100;
 
         std::vector<std::string> m_filter_tags;
-        osmium::TagsFilter m_filter{true};
-
-        bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
-        bool check_type(const osmium::Relation& relation) const noexcept;
-        bool check_tags(const osmium::Relation& relation) const noexcept;
+        osmium::TagsFilter m_filter{false};
 
     public:
 
@@ -76,6 +72,10 @@ namespace strategy_smart_by_first_node_and_tags {
         void show_arguments(osmium::VerboseOutput& vout) override final;
 
         void run(osmium::VerboseOutput& vout, bool display_progress, const osmium::io::File& input_file) override final;
+
+        bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
+        bool check_type(const osmium::Relation& relation) const noexcept;
+        bool check_tags(const osmium::Relation& relation) const noexcept;
 
     }; // class Strategy
 

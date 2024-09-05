@@ -36,10 +36,14 @@ namespace strategy_smart_by_first_node_and_tags {
             const auto ref = member.positive_ref();
             switch (member.type()) {
                 case osmium::item_type::node:
-                    extra_node_ids.set(ref);
+                    if (!node_ids.get(ref)) {
+                        extra_node_ids.set(ref);
+                    }
                     break;
                 case osmium::item_type::way:
-                    extra_way_ids.set(ref);
+                    if (!way_ids.get(ref)) {
+                        extra_way_ids.set(ref);
+                    }
                     break;
                 default:
                     break;
@@ -47,14 +51,26 @@ namespace strategy_smart_by_first_node_and_tags {
         }
     }
 
-    void Data::add_relation_parents(osmium::unsigned_object_id_type id, const osmium::index::RelationsMapIndex& map) {
-        map.for_each(id, [&](osmium::unsigned_object_id_type parent_id) {
-            if (!relation_ids.get(parent_id) &&
-                !extra_relation_ids.get(parent_id)) {
-                relation_ids.set(parent_id);
-                add_relation_parents(parent_id, map);
+    void Data::add_relation_network(const osmium::index::RelationsMapIndexes& indices) {
+        std::queue<osmium::unsigned_object_id_type> q;
+        const auto queue_relation = [&q](const auto id) {
+            q.push(id);
+        };
+        const auto queue_relations = [&](const auto id) {
+            indices.member_to_parent().for_each_parent(id, queue_relation);
+            indices.parent_to_member().for_each_parent(id, queue_relation);
+        };
+        for (const auto id : relation_ids) {
+            queue_relations(id);
+        }
+        while (!q.empty()) {
+            const auto id = q.front();
+            q.pop();
+            if (!relation_ids.get(id) && !extra_relation_ids.get(id)) {
+                extra_relation_ids.set(id);
+                queue_relations(id);
             }
-        });
+        }
     }
 
     Strategy::Strategy(const std::vector<std::unique_ptr<Extract>>& extracts, const osmium::Options& options) {
@@ -186,7 +202,6 @@ namespace strategy_smart_by_first_node_and_tags {
             const auto& first_node = way.nodes().front();
             if ((e->node_ids.get(first_node.positive_ref()) && !e->has_conflicting_tags(way.tags())) || e->has_matching_tags(way.tags())) {
                 e->way_ids.set(way.positive_id());
-                return;
             }
         }
 
@@ -247,12 +262,11 @@ namespace strategy_smart_by_first_node_and_tags {
             Pass(strategy) {
         }
 
-        void eway(extract_data* e, const osmium::Way& way) {
-            if (e->way_ids.get(way.positive_id()) ||
-                e->extra_way_ids.get(way.positive_id())) {
-                for (const auto& nr : way.nodes()) {
-                    e->extra_node_ids.set(nr.ref());
-                }
+        void erelation(extract_data* e, const osmium::Relation& relation) {
+            auto strategy1 = strategy();
+            if (e->extra_relation_ids.get(relation.positive_id()) &&
+                (strategy().check_type(relation) || strategy().check_tags(relation))) {
+                e->add_relation_members(relation);
             }
         }
 
@@ -263,6 +277,25 @@ namespace strategy_smart_by_first_node_and_tags {
     public:
 
         explicit Pass3(Strategy* strategy) :
+            Pass(strategy) {
+        }
+
+        void eway(extract_data* e, const osmium::Way& way) {
+            if (e->way_ids.get(way.positive_id()) ||
+                e->extra_way_ids.get(way.positive_id())) {
+                for (const auto& nr : way.nodes()) {
+                    e->extra_node_ids.set(nr.ref());
+                }
+            }
+        }
+
+    }; // class Pass3
+
+    class Pass4 : public Pass<Strategy, Pass4> {
+
+    public:
+
+        explicit Pass4(Strategy* strategy) :
             Pass(strategy) {
         }
 
@@ -287,7 +320,7 @@ namespace strategy_smart_by_first_node_and_tags {
             }
         }
 
-    }; // class Pass3
+    }; // class Pass4
 
     void Strategy::run(osmium::VerboseOutput& vout, bool display_progress, const osmium::io::File& input_file) {
         if (input_file.filename().empty()) {
@@ -296,31 +329,36 @@ namespace strategy_smart_by_first_node_and_tags {
 
         vout << "Running 'smart_by_first_node_and_tags' strategy in three passes...\n";
         const std::size_t file_size = osmium::file_size(input_file.filename());
-        osmium::ProgressBar progress_bar{file_size * 3, display_progress};
+        osmium::ProgressBar progress_bar{file_size * 4, display_progress};
 
-        vout << "First pass (of three)...\n";
+        vout << "First pass (of four)...\n";
         Pass1 pass1{this};
         pass1.run(progress_bar, input_file, osmium::io::read_meta::no);
         progress_bar.file_done(file_size);
+        vout << "Pass 1 done\n";
 
-        // recursively get parents of all relations that are in an extract
-        const auto relations_map = pass1.relations_map_stash().build_member_to_parent_index();
+        // identify the relations to include
+        const auto relation_indices = pass1.relations_map_stash().build_indexes();
         for (auto& e : m_extracts) {
-            for (const osmium::unsigned_object_id_type id : e.relation_ids) {
-                e.add_relation_parents(id, relations_map);
-            }
+            e.add_relation_network(relation_indices);
         }
 
         progress_bar.remove();
-        vout << "Second pass (of three)...\n";
+        vout << "Second pass (of four)...\n";
         Pass2 pass2{this};
-        pass2.run(progress_bar, input_file, osmium::osm_entity_bits::way, osmium::io::read_meta::no);
+        pass2.run(progress_bar, input_file, osmium::osm_entity_bits::relation, osmium::io::read_meta::no);
         progress_bar.file_done(file_size);
 
         progress_bar.remove();
-        vout << "Third pass (of three)...\n";
+        vout << "Third pass (of four)...\n";
         Pass3 pass3{this};
-        pass3.run(progress_bar, input_file);
+        pass3.run(progress_bar, input_file, osmium::osm_entity_bits::way, osmium::io::read_meta::no);
+        progress_bar.file_done(file_size);
+
+        progress_bar.remove();
+        vout << "Fourth pass (of four)...\n";
+        Pass4 pass4{this};
+        pass4.run(progress_bar, input_file);
 
         progress_bar.done();
     }
