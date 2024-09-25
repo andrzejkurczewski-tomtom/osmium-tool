@@ -320,9 +320,9 @@ namespace strategy_smart_custom {
 
         vout << "Running 'smart_custom' strategy in (at most) four passes...\n";
         const std::size_t file_size = osmium::file_size(input_file.filename());
-        osmium::ProgressBar progress_bar{file_size * 4, display_progress};
+        osmium::ProgressBar progress_bar{file_size * 4, !vout.verbose() && display_progress};
 
-        vout << "First pass (of four)...\n";
+        vout << "Pass 1...\n";
         Pass1 pass1{this};
         pass1.run(progress_bar, input_file, osmium::io::read_meta::no);
         progress_bar.file_done(file_size);
@@ -334,30 +334,35 @@ namespace strategy_smart_custom {
             e.add_relation_network(relation_indices);
         }
 
-        progress_bar.remove();
-        vout << "Second pass (of four)...\n";
-        Pass2 pass2{this};
         if (std::find_if(m_extracts.begin(), m_extracts.end(),
-            [](const auto& extract) { return !extract.extra_relation_ids.empty(); }) != m_extracts.end()) {
+            [](const auto& extract) { return !extract.extra_relation_ids.empty(); }) != m_extracts.end())
+        {
+            progress_bar.remove();
+            vout << "Pass 2...\n";
+            Pass2 pass2{this};
             pass2.run(progress_bar, input_file, osmium::osm_entity_bits::relation, osmium::io::read_meta::no);
+            progress_bar.file_done(file_size);
+            vout << "Pass 2 done\n";
         }
-        progress_bar.file_done(file_size);
 
-        progress_bar.remove();
-        vout << "Third pass (of four)...\n";
-        Pass3 pass3{this};
         if (std::find_if(m_extracts.begin(), m_extracts.end(),
-            [](const auto& extract) { return !extract.extra_way_ids.empty(); }) != m_extracts.end()) {
+            [](const auto& extract) { return !extract.extra_way_ids.empty(); }) != m_extracts.end())
+        {
+            progress_bar.remove();
+            vout << "Pass 3...\n";
+            Pass3 pass3{this};
             pass3.run(progress_bar, input_file, osmium::osm_entity_bits::way, osmium::io::read_meta::no);
+            progress_bar.file_done(file_size);
+            vout << "Pass 3 done\n";
         }
-        progress_bar.file_done(file_size);
 
         progress_bar.remove();
-        vout << "Fourth pass (of four)...\n";
+        vout << "Pass 4...\n";
         Pass4 pass4{this};
         pass4.run(progress_bar, input_file);
-
         progress_bar.done();
+        vout << "Pass 4 done\n";
+
     }
 
 } // namespace strategy_smart_custom
