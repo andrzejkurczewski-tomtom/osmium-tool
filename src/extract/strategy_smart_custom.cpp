@@ -209,7 +209,9 @@ namespace strategy_smart_custom {
 
         void relation(const osmium::Relation& relation) {
             m_check_order.relation(relation);
-            m_relations_map_stash.add_members(relation);
+            if (strategy().check_type(relation) || strategy().check_tags(relation)) {
+                m_relations_map_stash.add_members(relation);
+            }
         }
 
         void erelation(extract_data* e, const osmium::Relation& relation) {
