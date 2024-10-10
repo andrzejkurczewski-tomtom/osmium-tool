@@ -35,12 +35,13 @@ check_extract(smart-nonmp          input1.osm output-smart-nonmp.osm "-s smart -
 
 check_extract_cfg(simple           input1.osm output-simple.osm "-s simple --output-header=xml_josm_upload=false")
 
-check_extract(smart-custom-default        input1.osm output-smart-nonmp.osm "-s smart_custom")
-check_extract(smart-custom-mp             input1.osm output-smart.osm "-s smart_custom -S types=multipolygon")
-check_extract(smart-custom-nonmp          input1.osm output-smart-nonmp.osm "-s smart_custom -S types=x")
-check_extract(smart-custom-r              input2.osm output-smart-custom-r.osm "-s smart_custom -S types=r")
-check_extract(smart-custom-r-and-s        input2.osm output-smart-custom-r-and-s.osm "-s smart_custom -S types=r,s")
-check_extract(smart-custom-r-and-tag      input2.osm output-smart-custom-r-and-s.osm "-s smart_custom -S types=r -S tags=include_members=yes")
+check_extract(smart-custom-default        input1.osm output-smart-custom-default.osm "-s smart_custom")
+check_extract(smart-custom-mp             input1.osm output-smart-custom-mp.osm "-s smart_custom -S relations=type:multipolygon")
+check_extract(smart-custom-nonmp          input1.osm output-smart-custom-default.osm "-s smart_custom -S relations=type:boundary")
+check_extract(smart-custom-r-1            input2.osm output-smart-custom-r.osm "-s smart_custom -S relations=type:r")
+check_extract(smart-custom-r-2            input2.osm output-smart-custom-r.osm "-s smart_custom -S relation-system=type:r")
+check_extract(smart-custom-r-s-t-u        input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r,type:s,type:t,type:u")
+check_extract(smart-custom-r-tag-t-u      input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r,part_of_relation_system:yes,type:t,type:u")
 
 #-----------------------------------------------------------------------------
 

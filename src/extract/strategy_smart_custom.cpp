@@ -20,7 +20,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
+
+/*
+- Question: Does our stack rely on the parent-discovery semantics of the smart strategy
+  for boundary relations?
+  I think not because the smart strategy does not collect ways of parent boundary relations,
+  so they cannot be used to assign relation properties to ways inside the parent boundary.
+  Also the assignment of ISO codes happens right at the beginning of region preprocessing.
+ */
+
 #include "strategy_smart_custom.hpp"
+
+#include <unordered_set>
 
 #include "../util.hpp"
 
@@ -74,35 +85,39 @@ namespace strategy_smart_custom {
     }
 
     Strategy::Strategy(const std::vector<std::unique_ptr<Extract>>& extracts, const osmium::Options& options) {
+
         m_extracts.reserve(extracts.size());
         for (const auto& extract : extracts) {
             m_extracts.emplace_back(*extract);
         }
 
         for (const auto& option : options) {
-            if (option.first == "types") {
-                if (option.second.empty()) {
-                    m_types.clear();
-                } else {
-                    m_types = osmium::split_string(option.second, ',', true);
-                }
-            } else if (option.first == "tags") {
-                m_filter_tags = osmium::split_string(option.second, ',', true);
-                m_filter.set_default_result(false);
-                for (const auto &tag : m_filter_tags) {
-                    const auto pos = tag.find('=');
-                    if (pos == std::string::npos) {
-                        m_filter.add_rule(true, osmium::TagMatcher{tag});
-                    } else {
-                        const auto key = tag.substr(0, pos);
-                        const auto value = tag.substr(pos + 1);
-                        m_filter.add_rule(true, osmium::TagMatcher{key, value});
-                    }
-                }
+            if (option.first == "relations") {
+                m_relation_tags.insert(m_relation_tags.begin(), option.second.begin(), option.second.end());
+                add_filter_rules(m_relation_filter, option.second);
+            } else if (option.first == "relation-system") {
+                m_relation_system_tags.insert(m_relation_system_tags.begin(), option.second.begin(), option.second.end());
+                add_filter_rules(m_relation_system_filter, option.second);
             } else if (option.first == "by-first-node") {
                 m_by_first_node = option.second.empty() || option.second == "true" || option.second == "yes";
             } else {
                 warning(std::string{"Ignoring unknown option '"} + option.first + "' for 'smart_custom' strategy.\n");
+            }
+        }
+
+    }
+
+    void Strategy::add_filter_rules(osmium::TagsFilter& filter, const std::string& option_value) noexcept {
+        filter.set_default_result(false);
+        const auto tags = osmium::split_string(option_value, ',', true);
+        for (const auto &tag : tags) {
+            const auto pos = tag.find(':');
+            if (pos == std::string::npos) {
+                filter.add_rule(true, osmium::TagMatcher{tag});
+            } else {
+                const auto key = tag.substr(0, pos);
+                const auto value = tag.substr(pos + 1);
+                filter.add_rule(true, osmium::TagMatcher{key, value});
             }
         }
     }
@@ -111,44 +126,21 @@ namespace strategy_smart_custom {
         return "smart_custom";
     }
 
-    bool Strategy::check_type(const osmium::Relation& relation) const noexcept {
-        if (m_types.empty()) {
-            return false;
-        }
-
-        const char* type = relation.tags()["type"];
-        if (!type) {
-            return false;
-        }
-        const auto it = std::find(m_types.begin(), m_types.end(), type);
-        return it != m_types.end();
+    bool Strategy::is_relevant_relation(const osmium::Relation& relation) const noexcept {
+        return osmium::tags::match_any_of(relation.tags(), m_relation_filter);
     }
 
-    bool Strategy::check_tags(const osmium::Relation& relation) const noexcept {
-        return osmium::tags::match_any_of(relation.tags(), m_filter);
+    bool Strategy::is_part_of_relevant_relation_system(const osmium::Relation& relation) const noexcept {
+        return osmium::tags::match_any_of(relation.tags(), m_relation_system_filter);
     }
 
     void Strategy::show_arguments(osmium::VerboseOutput& vout) {
         vout << "Additional strategy options:\n";
-        if (!m_types.empty()) {
-            std::string typelist;
-            for (const auto& type : m_types) {
-                if (!typelist.empty()) {
-                    typelist += ", ";
-                }
-                typelist += type;
-            }
-            vout << "  - [types] relation types: " << typelist << '\n';
+        if (!m_relation_tags.empty()) {
+            vout << "  - [relations] " << m_relation_tags << '\n';
         }
-        if (!m_filter_tags.empty()) {
-            std::string filterlist;
-            for (const auto& tag : m_filter_tags) {
-                if (!filterlist.empty()) {
-                    filterlist += ",";
-                }
-                filterlist += tag;
-            }
-            vout << "  - [tags] " << filterlist << '\n';
+        if (!m_relation_system_tags.empty()) {
+            vout << "  - [relation-systems] " << m_relation_system_tags << '\n';
         }
         if (m_by_first_node) {
             vout << "  - [by-first-node]\n";
@@ -209,7 +201,7 @@ namespace strategy_smart_custom {
 
         void relation(const osmium::Relation& relation) {
             m_check_order.relation(relation);
-            if (strategy().check_type(relation) || strategy().check_tags(relation)) {
+            if (strategy().is_part_of_relevant_relation_system(relation)) {
                 m_relations_map_stash.add_members(relation);
             }
         }
@@ -220,19 +212,19 @@ namespace strategy_smart_custom {
                     case osmium::item_type::node:
                         if (e->node_ids.get(member.positive_ref())) {
                             e->relation_ids.set(relation.positive_id());
-                            if (strategy().check_type(relation) || strategy().check_tags(relation)) {
+                            if (strategy().is_relevant_relation(relation) || strategy().is_part_of_relevant_relation_system(relation)) {
                                 e->add_relation_members(relation);
-                                return;
                             }
+			    return;
                         }
                         break;
                     case osmium::item_type::way:
                         if (e->way_ids.get(member.positive_ref())) {
                             e->relation_ids.set(relation.positive_id());
-                            if (strategy().check_type(relation) || strategy().check_tags(relation)) {
+                            if (strategy().is_relevant_relation(relation) || strategy().is_part_of_relevant_relation_system(relation)) {
                                 e->add_relation_members(relation);
-                                return;
                             }
+			    return;
                         }
                         break;
                     default:
@@ -257,7 +249,7 @@ namespace strategy_smart_custom {
 
         void erelation(extract_data* e, const osmium::Relation& relation) {
             if (e->extra_relation_ids.get(relation.positive_id()) &&
-                (strategy().check_type(relation) || strategy().check_tags(relation))) {
+                (strategy().is_part_of_relevant_relation_system(relation))) {
                 e->add_relation_members(relation);
             }
         }

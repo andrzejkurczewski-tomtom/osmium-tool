@@ -338,13 +338,12 @@ Strategy **smart**
 Strategy **smart_custom**
 :   Runs in up to four passes. The extract will contain all nodes inside the region,
     all ways containing or **starting at** one of them (see option `--by-first-node`)
-    which do not satisfy any of the `exlude_tags` rules (see below),
+    which do not satisfy any of the `exclude_tags` rules (see below),
     all ways fullfilling all the `include_tags` rules (see below),
     and all nodes referenced by all these ways.
     Moreover, the extract will contain all relations referencing nodes inside the region
-    or ways already included (as explained above) and all relations reachable from them.
-    The former relations will be reference complete, the latter will be completed
-    depending on the configuration (see `--types` and `--tags` options).
+    or ways already included (as explained above) and, optionally, all relations reachable
+    from them. (Please see below for details.)
 
 For the **complete_ways** strategy you can set the option "-S relations=false"
 in which case no relations will be written to the output file.
@@ -377,14 +376,19 @@ complete-partial-relations) AND tags".
 
 The **smart_custom** strategy allows the following strategy options:
 
-Use `--by-first-node` to consider only ways which start with a node inside the region.
+Use "-S by-first-node" to consider only ways which start with a node inside the region.
 
-**smart_custom** accepts the options "-S tags=PATTERN,..." and "-S tags=PATTERN,...",
-too, but differs slightly from **smart** regarding the combination of "types" and
-"tags" options: It includes result of both matches because the options will be
-interpreted as "types OR tags".
+Use "-S relations=key:PATTERN,..." to include all nodes and ways referenced by the
+relations which are included by default and which match at least one the given criteria.
 
-**smart_custom** does not accept the "-S complete-partial-relations=X" option.
+Use "-S relation-system=key:PATTERN,..." to include all relations which are reachable
+from the relations included by default and which match at least one the given criteria.
+(The search is performed in a graph of relations where two relations are connected
+when they are in a parent-child-relationship and each of them matches at least one of
+the given criteria.) All relations included this way will be reference complete.
+
+**smart_custom** does not accept the "-S types", "-S tags", and -S complete-partial-relations=X"
+options.
 
 **smart_custom** allows to define `include_tags` and `exclude_tags` rules.
 They are only supported when using a **config file**, and they should be defined on

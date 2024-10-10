@@ -59,7 +59,7 @@
     <member type="way" ref="24" role=""/>
     <member type="node" ref="15" role=""/>
     <tag k="type" v="s"/>
-    <tag k="include_members" v="yes"/>
+    <tag k="part_of_relation_system" v="yes"/>
   </relation>
   <relation id="35" version="1">
     <member type="relation" ref="31" role=""/>

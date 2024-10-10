@@ -56,12 +56,15 @@ namespace strategy_smart_custom {
         using extract_data = ExtractData<Data>;
         std::vector<extract_data> m_extracts;
 
-        std::vector<std::string> m_types;
+        std::string m_relation_tags;
+        std::string m_relation_system_tags;
 
-        std::vector<std::string> m_filter_tags;
-        osmium::TagsFilter m_filter{false};
+        osmium::TagsFilter m_relation_filter{false};
+        osmium::TagsFilter m_relation_system_filter{false};
 
         bool m_by_first_node = false;
+
+        void add_filter_rules(osmium::TagsFilter& filter, const std::string& option_value) noexcept;
 
     public:
 
@@ -74,8 +77,9 @@ namespace strategy_smart_custom {
         void run(osmium::VerboseOutput& vout, bool display_progress, const osmium::io::File& input_file) override final;
 
         bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
-        bool check_type(const osmium::Relation& relation) const noexcept;
-        bool check_tags(const osmium::Relation& relation) const noexcept;
+
+        bool is_relevant_relation(const osmium::Relation& relation) const noexcept;
+        bool is_part_of_relevant_relation_system(const osmium::Relation& relation) const noexcept;
 
     }; // class Strategy
 
