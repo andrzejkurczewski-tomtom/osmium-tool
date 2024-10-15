@@ -116,8 +116,8 @@ namespace strategy_smart_custom {
                 filter.add_rule(true, osmium::TagMatcher{tag});
             } else {
                 const auto key = tag.substr(0, pos);
-                const auto value = tag.substr(pos + 1);
-                filter.add_rule(true, osmium::TagMatcher{key, value});
+                const auto values = osmium::split_string(tag.substr(pos + 1), '|', true);
+                filter.add_rule(true, osmium::TagMatcher{key, values});
             }
         }
     }

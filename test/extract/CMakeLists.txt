@@ -40,8 +40,8 @@ check_extract(smart-custom-mp             input1.osm output-smart-custom-mp.osm 
 check_extract(smart-custom-nonmp          input1.osm output-smart-custom-default.osm "-s smart_custom -S relations=type:boundary")
 check_extract(smart-custom-r-1            input2.osm output-smart-custom-r.osm "-s smart_custom -S relations=type:r")
 check_extract(smart-custom-r-2            input2.osm output-smart-custom-r.osm "-s smart_custom -S relation-system=type:r")
-check_extract(smart-custom-r-s-t-u        input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r,type:s,type:t,type:u")
-check_extract(smart-custom-r-tag-t-u      input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r,part_of_relation_system:yes,type:t,type:u")
+check_extract(smart-custom-r-s-t-u        input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r|s|t|u")
+check_extract(smart-custom-r-tag-t-u      input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r|t|u,part_of_relation_system:yes")
 
 #-----------------------------------------------------------------------------
 

@@ -380,6 +380,7 @@ Use "-S by-first-node" to consider only ways which start with a node inside the 
 
 Use "-S relations=key:PATTERN,..." to include all nodes and ways referenced by the
 relations which are included by default and which match at least one the given criteria.
+(A pattern is either a string or a sequence of strings separated by `|`.)
 
 Use "-S relation-system=key:PATTERN,..." to include all relations which are reachable
 from the relations included by default and which match at least one the given criteria.
