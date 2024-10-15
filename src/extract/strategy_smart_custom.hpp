@@ -1,5 +1,5 @@
-#ifndef EXTRACT_STRATEGY_SMART_BY_FIRST_NODE_AND_TAGS_HPP
-#define EXTRACT_STRATEGY_SMART_BY_FIRST_NODE_AND_TAGS_HPP
+#ifndef EXTRACT_strategy_smart_custom_HPP
+#define EXTRACT_strategy_smart_custom_HPP
 
 /*
 
@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
-namespace strategy_smart_by_first_node_and_tags {
+namespace strategy_smart_custom {
 
     struct Data {
         osmium::index::IdSetDense<osmium::unsigned_object_id_type> node_ids;
@@ -44,7 +44,7 @@ namespace strategy_smart_by_first_node_and_tags {
         osmium::index::IdSetDense<osmium::unsigned_object_id_type> extra_relation_ids;
 
         void add_relation_members(const osmium::Relation& relation);
-        void add_relation_parents(osmium::unsigned_object_id_type id, const osmium::index::RelationsMapIndex& map);
+        void add_relation_network(const osmium::index::RelationsMapIndexes& indices);
     };
 
     class Strategy : public ExtractStrategy {
@@ -56,16 +56,15 @@ namespace strategy_smart_by_first_node_and_tags {
         using extract_data = ExtractData<Data>;
         std::vector<extract_data> m_extracts;
 
-        std::vector<std::string> m_types;
+        std::string m_relation_tags;
+        std::string m_relation_system_tags;
 
-        std::size_t m_complete_partial_relations_percentage = 100;
+        osmium::TagsFilter m_relation_filter{false};
+        osmium::TagsFilter m_relation_system_filter{false};
 
-        std::vector<std::string> m_filter_tags;
-        osmium::TagsFilter m_filter{false};
+        bool m_by_first_node = false;
 
-        bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
-        bool check_type(const osmium::Relation& relation) const noexcept;
-        bool check_tags(const osmium::Relation& relation) const noexcept;
+        void add_filter_rules(osmium::TagsFilter& filter, const std::string& option_value) noexcept;
 
     public:
 
@@ -77,8 +76,13 @@ namespace strategy_smart_by_first_node_and_tags {
 
         void run(osmium::VerboseOutput& vout, bool display_progress, const osmium::io::File& input_file) override final;
 
+        bool check_members_count(const std::size_t size, const std::size_t wanted_members) const noexcept;
+
+        bool is_relevant_relation(const osmium::Relation& relation) const noexcept;
+        bool is_part_of_relevant_relation_system(const osmium::Relation& relation) const noexcept;
+
     }; // class Strategy
 
-} // namespace strategy_smart_by_first_node_and_tags
+} // namespace strategy_smart_custom
 
-#endif // EXTRACT_STRATEGY_SMART_BY_FIRST_NODE_AND_TAGS_HPP
+#endif // EXTRACT_strategy_smart_custom_HPP

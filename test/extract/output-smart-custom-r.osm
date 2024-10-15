@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+  <node id="1" version="1" lat="3" lon="0.2"/>
+  <node id="2" version="1" lat="1" lon="0.2"/>
+  <node id="3" version="1" lat="2" lon="0.3"/>
+  <node id="4" version="1" lat="3" lon="0.5"/>
+  <node id="5" version="1" lat="1" lon="0.5"/>
+  <node id="6" version="1" lat="2" lon="0.6"/>
+  <way id="20" version="1">
+    <nd ref="1"/>
+    <nd ref="2"/>
+  </way>
+  <way id="21" version="1">
+    <nd ref="4"/>
+    <nd ref="5"/>
+  </way>
+  <relation id="30" version="1">
+    <member type="way" ref="20" role=""/>
+    <member type="node" ref="3" role=""/>
+    <tag k="type" v="r"/>
+  </relation>
+  <relation id="31" version="1">
+    <member type="way" ref="21" role=""/>
+    <member type="node" ref="6" role=""/>
+    <tag k="type" v="r"/>
+  </relation>
+</osm>

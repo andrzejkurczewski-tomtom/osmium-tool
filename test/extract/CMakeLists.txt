@@ -24,14 +24,24 @@ endfunction()
 check_extract(clean                input1.osm output-clean.osm "--clean version --clean uid")
 
 check_extract(simple               input1.osm output-simple.osm "-s simple --output-header=xml_josm_upload!")
-check_extract(complete_ways        input1.osm output-complete-ways.osm "-s complete_ways")
-check_extract(complete_ways_norels input1.osm output-complete-ways-norels.osm "-s complete_ways -S relations=false")
-check_extract(smart_default        input1.osm output-smart.osm "-s smart")
-check_extract(smart_mp             input1.osm output-smart.osm "-s smart -S types=multipolygon")
-check_extract(smart_any            input1.osm output-smart.osm "-s smart -S types=any")
-check_extract(smart_nonmp          input1.osm output-smart-nonmp.osm "-s smart -S types=x")
+
+check_extract(complete-ways        input1.osm output-complete-ways.osm "-s complete_ways")
+check_extract(complete-ways-norels input1.osm output-complete-ways-norels.osm "-s complete_ways -S relations=false")
+
+check_extract(smart-default        input1.osm output-smart.osm "-s smart")
+check_extract(smart-mp             input1.osm output-smart.osm "-s smart -S types=multipolygon")
+check_extract(smart-any            input1.osm output-smart.osm "-s smart -S types=any")
+check_extract(smart-nonmp          input1.osm output-smart-nonmp.osm "-s smart -S types=x")
 
 check_extract_cfg(simple           input1.osm output-simple.osm "-s simple --output-header=xml_josm_upload=false")
+
+check_extract(smart-custom-default        input1.osm output-smart-custom-default.osm "-s smart_custom")
+check_extract(smart-custom-mp             input1.osm output-smart-custom-mp.osm "-s smart_custom -S relations=type:multipolygon")
+check_extract(smart-custom-nonmp          input1.osm output-smart-custom-default.osm "-s smart_custom -S relations=type:boundary")
+check_extract(smart-custom-r-1            input2.osm output-smart-custom-r.osm "-s smart_custom -S relations=type:r")
+check_extract(smart-custom-r-2            input2.osm output-smart-custom-r.osm "-s smart_custom -S relation-system=type:r")
+check_extract(smart-custom-r-s-t-u        input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r|s|t|u")
+check_extract(smart-custom-r-tag-t-u      input2.osm output-smart-custom-r-s-t-u.osm "-s smart_custom -S relation-system=type:r|t|u,part_of_relation_system:yes")
 
 #-----------------------------------------------------------------------------
 

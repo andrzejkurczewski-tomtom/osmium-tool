@@ -322,17 +322,6 @@ Strategy **complete_ways**
     parent relations. The ways are reference-complete, but the relations are
     not.
 
-Strategy **complete_ways_by_first_node_and_tags**
-:   Runs in two passes. The extract will contain all nodes inside the region
-    and all ways **starting at** those nodes as well as all nodes referenced by
-    those ways. If include_tags and/or exclude_tags are defined, extract will
-    also contain all ways fulfilling all of the include_tags rules and all
-    nodes referenced by those ways, and it will **not** contain ways fulfilling
-    any of the exclude_tags. The extract will also contain all relations referenced by
-    nodes inside the region or ways already included and, recursively, their
-    parent relations. The ways are reference-complete, but the relations are
-    not.
-
 Strategy **smart**
 :   Runs in three passes. The extract will contain all nodes inside the region
     and all ways referencing those nodes as well as all nodes referenced by
@@ -346,22 +335,15 @@ Strategy **smart**
     have nodes in the region are reference-complete. Other relations are not
     reference-complete.
 
-Strategy **smart_by_first_node_and_tags**
-:   Runs in three passes. The extract will contain all nodes inside the region
-    and all ways **starting at** those nodes as well as all nodes referenced by
-    those ways. If include_tags and/or exclude_tags are defined, extract will
-    also contain all ways fulfilling all the include_tags rules and all 
-    nodes referenced by those ways, and it will **not** contain ways fulfilling
-    any of the exclude_tags.
-    The extract will also contain all relations referenced by
-    nodes inside the region or ways already included and, recursively, their
-    parent relations. The extract will also contain all nodes and ways (and
-    the nodes they reference) referenced by relations tagged
-    "type=multipolygon" directly referencing any nodes in the region or ways
-    referencing nodes in the region. The ways are reference-complete, and
-    all multipolygon relations referencing nodes in the regions or ways that
-    have nodes in the region are reference-complete. Other relations are not
-    reference-complete.
+Strategy **smart_custom**
+:   Runs in up to four passes. The extract will contain all nodes inside the region,
+    all ways containing or **starting at** one of them (see option `--by-first-node`)
+    which do not satisfy any of the `exclude_tags` rules (see below),
+    all ways fullfilling all the `include_tags` rules (see below),
+    and all nodes referenced by all these ways.
+    Moreover, the extract will contain all relations referencing nodes inside the region
+    or ways already included (as explained above) and, optionally, all relations reachable
+    from them. (Please see below for details.)
 
 For the **complete_ways** strategy you can set the option "-S relations=false"
 in which case no relations will be written to the output file.
@@ -392,19 +374,25 @@ You can combine the "-S types", "-S complete-partial-relations", and "-S tags"
 options. The options will be interpreted as "(types OR
 complete-partial-relations) AND tags".
 
-For the **smart_by_first_node_and_tags** strategy  you can set the option
-"-S tags=PATTERN,...", however, it works differently compare to **smart** 
-strategy. In this strategy, the combination of "types" and "tags" options
-includes result of both matches, for example, of the matched relation has
-a type=multipolygon and a tag maritime=yes, and the query contains options
-like: "-S types=road_acess -S tags=maritime=yes" then normally the relation
-won't be processed, as it's type differs from declared options, but with 
-smart_by_first_node_and_tags the relation will be processed.
- 
+The **smart_custom** strategy allows the following strategy options:
 
-The **complete_ways_by_first_node_and_tags** and **smart_by_first_node_and_tags**
-strategies allow to define include_tags and exclude_tags.
-They are onl supported when using **config file**, and they should be defined on
+Use "-S by-first-node" to consider only ways which start with a node inside the region.
+
+Use "-S relations=key:PATTERN,..." to include all nodes and ways referenced by the
+relations which are included by default and which match at least one the given criteria.
+(A pattern is either a string or a sequence of strings separated by `|`.)
+
+Use "-S relation-system=key:PATTERN,..." to include all relations which are reachable
+from the relations included by default and which match at least one the given criteria.
+(The search is performed in a graph of relations where two relations are connected
+when they are in a parent-child-relationship and each of them matches at least one of
+the given criteria.) All relations included this way will be reference complete.
+
+**smart_custom** does not accept the "-S types", "-S tags", and -S complete-partial-relations=X"
+options.
+
+**smart_custom** allows to define `include_tags` and `exclude_tags` rules.
+They are only supported when using a **config file**, and they should be defined on
 extract level, e.g.:
 
     "extracts": [
@@ -424,10 +412,16 @@ extract level, e.g.:
         ...
     ]
 
-Note that filters defined within include_tags and exclude_tags support following forms:
+Note that rules defined within include_tags and exclude_tags support following forms:
 - `key` - fulfilled when there is a tag with given key
 - `key=value` - fulfilled when there is a tag with given key and given value
 - `key!=value` - fulfilled when there is a tag with given key, and it has value different from given value
+
+If `include_tags` rules are defined, the extract will contain all ways fulfilling
+all these rules and all nodes referenced by those ways.
+
+If `exclude_tags` rules are defined, the extract will **not** contain ways fulfilling
+any of these rules.
 
 # DIAGNOSTICS
 
